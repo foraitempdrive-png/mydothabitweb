@@ -200,16 +200,15 @@
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ★ ここに firebaseConfig を貼り付けてください ★
-const firebaseConfig = {
-  apiKey: "AIzaSyB_DmTpMKMVHxNKlC5umC1hadI4EwSx1TE",
-  authDomain: "my-dothabit.firebaseapp.com",
-  projectId: "my-dothabit",
-  storageBucket: "my-dothabit.firebasestorage.app",
-  messagingSenderId: "31960931153",
-  appId: "1:31960931153:web:79223d75c0cb208c1b1170",
-  measurementId: "G-S413NH83FM"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_DmTpMKMVHxNKlC5umC1hadI4EwSx1TE",
+      authDomain: "my-dothabit.firebaseapp.com",
+      projectId: "my-dothabit",
+      storageBucket: "my-dothabit.firebasestorage.app",
+      messagingSenderId: "31960931153",
+      appId: "1:31960931153:web:79223d75c0cb208c1b1170",
+      measurementId: "G-S413NH83FM"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -236,4 +235,233 @@ const firebaseConfig = {
       const res = [];
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date();
-        d
+        d.setDate(d.getDate() - i);
+        res.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      }
+      return res;
+    };
+
+    function renderColorPicker(containerEl, getCurrent, setCurrent) {
+      containerEl.innerHTML = '';
+      COLORS.forEach(c => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `color-dot ${c === getCurrent() ? 'selected' : ''}`;
+        btn.style.backgroundColor = c;
+        btn.onclick = () => {
+          setCurrent(c);
+          containerEl.querySelectorAll('.color-dot').forEach(el => el.classList.remove('selected'));
+          btn.classList.add('selected');
+        };
+        containerEl.appendChild(btn);
+      });
+    }
+
+    const addColorPickerEl = document.getElementById('add-color-picker');
+    const editColorPickerEl = document.getElementById('edit-color-picker');
+    renderColorPicker(addColorPickerEl, () => addSelectedColor, (c) => { addSelectedColor = c; });
+
+    function syncRangeButtons() {
+      document.querySelectorAll('.range-btn').forEach(btn => {
+        const d = Number(btn.dataset.days);
+        btn.classList.toggle('active', d === rangeDays);
+      });
+    }
+    document.querySelectorAll('.range-btn').forEach(btn => {
+      btn.onclick = () => {
+        rangeDays = Number(btn.dataset.days);
+        localStorage.setItem(RANGE_STORAGE_KEY, String(rangeDays));
+        syncRangeButtons();
+        render();
+      };
+    });
+    syncRangeButtons();
+
+    document.getElementById('btn-login').onclick = async () => {
+      document.getElementById('auth-error').textContent = '';
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (e) {
+        document.getElementById('auth-error').textContent = 'ログインに失敗しました: ' + e.message;
+      }
+    };
+    document.getElementById('btn-logout').onclick = () => signOut(auth);
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById('login-view').style.display = 'none';
+        document.getElementById('app-view').style.display = 'block';
+        startSync();
+      } else {
+        document.getElementById('login-view').style.display = 'flex';
+        document.getElementById('app-view').style.display = 'none';
+        if (unsubHabits) unsubHabits();
+        if (unsubLogs) unsubLogs();
+      }
+    });
+
+    function startSync() {
+      const qHabits = query(collection(db, 'habits'), orderBy('createdAt', 'asc'));
+      unsubHabits = onSnapshot(qHabits, (snap) => {
+        habits = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        render();
+      }, (err) => {
+        alert('データ読み込みエラー（Firestoreのルールやログインアカウントを確認してください）: ' + err.message);
+      });
+
+      unsubLogs = onSnapshot(collection(db, 'logs'), (snap) => {
+        logs = {};
+        snap.docs.forEach(d => { logs[d.id] = d.data(); });
+        render();
+      });
+    }
+
+    const addForm = document.getElementById('add-form');
+    document.getElementById('btn-toggle-add').onclick = () => addForm.classList.toggle('open');
+    addForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('habit-title');
+      const title = input.value.trim();
+      if (!title) return;
+      await addDoc(collection(db, 'habits'), { title, color: addSelectedColor, createdAt: Date.now() });
+      input.value = '';
+      addForm.classList.remove('open');
+    };
+
+    function render() {
+      const listEl = document.getElementById('habit-list');
+      listEl.innerHTML = '';
+      listEl.classList.toggle('range-30', rangeDays === 30);
+
+      const days = getPastDays(rangeDays);
+      const today = days[days.length - 1];
+
+      habits.forEach(habit => {
+        const habitColor = habit.color || COLORS[0];
+        const isTodayDone = !!logs[`${habit.id}_${today}`]?.completed;
+        const totalCount = days.filter(d => logs[`${habit.id}_${d}`]?.completed).length;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const header = document.createElement('div');
+        header.className = 'habit-header';
+        header.innerHTML = `
+          <div class="habit-meta">
+            <span class="habit-title">${escapeHtml(habit.title)}</span>
+            <span class="habit-count">${totalCount}日達成</span>
+          </div>
+          <div class="habit-controls">
+            <button class="btn-check" style="background:${isTodayDone ? habitColor : '#27272a'}; border-color:${habitColor};">
+              ${isTodayDone ? '✓ 完了' : '今日を記録'}
+            </button>
+            <button class="btn-icon btn-edit" title="名前・色を変更">✎</button>
+            <button class="btn-icon btn-del" title="削除">🗑</button>
+          </div>
+        `;
+
+        header.querySelector('.btn-check').onclick = async () => {
+          const logId = `${habit.id}_${today}`;
+          const cur = logs[logId];
+          if (cur?.completed) {
+            await deleteDoc(doc(db, 'logs', logId));
+          } else {
+            await setDoc(doc(db, 'logs', logId), { habitId: habit.id, date: today, completed: true, memo: cur?.memo || '' });
+          }
+        };
+
+        header.querySelector('.btn-edit').onclick = () => openEditModal(habit);
+
+        header.querySelector('.btn-del').onclick = async () => {
+          if (confirm('この習慣を削除しますか？')) {
+            await deleteDoc(doc(db, 'habits', habit.id));
+          }
+        };
+
+        const grid = document.createElement('div');
+        grid.className = 'dot-grid';
+
+        days.forEach(date => {
+          const log = logs[`${habit.id}_${date}`];
+          const done = !!log?.completed;
+          const hasMemo = !!log?.memo;
+          const dot = document.createElement('div');
+          dot.className = `dot ${hasMemo ? 'has-memo' : ''}`;
+          dot.style.backgroundColor = done ? habitColor : '#27272a';
+          dot.title = `${date}${hasMemo ? ' : ' + log.memo : ''}`;
+          dot.onclick = () => openLogModal(habit, date);
+          grid.appendChild(dot);
+        });
+
+        card.appendChild(header);
+        card.appendChild(grid);
+        listEl.appendChild(card);
+      });
+    }
+
+    const logBackdrop = document.getElementById('log-modal-backdrop');
+    const logModalTitle = document.getElementById('log-modal-title');
+    const logModalCompleted = document.getElementById('log-modal-completed');
+    const logModalMemo = document.getElementById('log-modal-memo');
+
+    function openLogModal(habit, date) {
+      const log = logs[`${habit.id}_${date}`] || { completed: false, memo: '' };
+      logModalState = { habitId: habit.id, date };
+      logModalTitle.textContent = `${habit.title} (${date})`;
+      logModalCompleted.checked = !!log.completed;
+      logModalMemo.value = log.memo || '';
+      logBackdrop.classList.add('open');
+    }
+
+    document.getElementById('btn-close-log-modal').onclick = () => logBackdrop.classList.remove('open');
+    logBackdrop.onclick = (e) => { if (e.target === logBackdrop) logBackdrop.classList.remove('open'); };
+
+    document.getElementById('btn-save-log-modal').onclick = async () => {
+      if (!logModalState) return;
+      const logId = `${logModalState.habitId}_${logModalState.date}`;
+      const completed = logModalCompleted.checked;
+      const memo = logModalMemo.value;
+      if (!completed && !memo.trim()) {
+        await deleteDoc(doc(db, 'logs', logId));
+      } else {
+        await setDoc(doc(db, 'logs', logId), { habitId: logModalState.habitId, date: logModalState.date, completed, memo });
+      }
+      logBackdrop.classList.remove('open');
+    };
+
+    const editBackdrop = document.getElementById('edit-modal-backdrop');
+    const editTitleInput = document.getElementById('edit-habit-title');
+
+    function openEditModal(habit) {
+      editingHabitId = habit.id;
+      editTitleInput.value = habit.title;
+      editSelectedColor = habit.color || COLORS[0];
+      renderColorPicker(editColorPickerEl, () => editSelectedColor, (c) => { editSelectedColor = c; });
+      editBackdrop.classList.add('open');
+      editTitleInput.focus();
+    }
+
+    document.getElementById('btn-close-edit-modal').onclick = () => editBackdrop.classList.remove('open');
+    editBackdrop.onclick = (e) => { if (e.target === editBackdrop) editBackdrop.classList.remove('open'); };
+
+    document.getElementById('btn-save-edit-modal').onclick = async () => {
+      if (!editingHabitId) return;
+      const title = editTitleInput.value.trim();
+      if (!title) {
+        alert('習慣の名前を入力してください。');
+        return;
+      }
+      await updateDoc(doc(db, 'habits', editingHabitId), {
+        title,
+        color: editSelectedColor
+      });
+      editBackdrop.classList.remove('open');
+      editingHabitId = null;
+    };
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+  </script>
+</body>
+</html>
