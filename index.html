@@ -17,7 +17,7 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 100vh; text-align: center; padding: 20px; gap: 12px;
     }
-    .container { max-width: 720px; margin: 0 auto; padding: 20px 14px 80px; }
+    .container { max-width: 720px; margin: 0 auto; padding: 18px 12px 80px; }
     .header {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 18px; gap: 8px; flex-wrap: wrap;
@@ -44,29 +44,49 @@
       grid-template-columns: minmax(0, 1fr);
       gap: 12px;
     }
+    /* 30日表示は画面幅に関わらず2列 */
     .habit-list.range-30 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-    @media (max-width: 480px) {
-      .habit-list.range-30 {
-        grid-template-columns: minmax(0, 1fr);
-      }
+      gap: 8px;
     }
 
     .habit-header {
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: flex-start;
       margin-bottom: 10px; gap: 6px;
     }
     .habit-meta { min-width: 0; }
     .habit-title {
-      font-weight: 600; font-size: 15px; margin-right: 6px;
+      display: block;
+      font-weight: 600; font-size: 15px;
       word-break: break-word;
     }
-    .habit-count { font-size: 11px; color: #a1a1aa; white-space: nowrap; }
+    .habit-count { display: block; font-size: 11px; color: #a1a1aa; margin-top: 2px; }
     .habit-controls { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 
-    /* 120日表示：24列 × 5行（枠幅いっぱいにドットを拡大） */
+    /* 2列表示時は狭い幅でも収まるよう微調整 */
+    .habit-list.range-30 .card { padding: 10px; }
+    .habit-list.range-30 .habit-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .habit-list.range-30 .habit-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+    }
+    .habit-list.range-30 .habit-title { font-size: 13px; }
+    .habit-list.range-30 .btn-check {
+      width: 100%;
+      justify-content: center;
+      padding: 5px 6px;
+      font-size: 11px;
+    }
+    .habit-list.range-30 .btn-icon { padding: 3px; font-size: 12px; }
+
+    /* 120日表示：24列 × 5行 */
     .dot-grid {
       display: grid;
       grid-auto-flow: row;
@@ -74,25 +94,25 @@
     }
     .habit-list:not(.range-30) .dot-grid {
       grid-template-columns: repeat(24, minmax(0, 1fr));
-      gap: 5px;
+      gap: 4px;
     }
     .habit-list:not(.range-30) .dot {
       width: 100%;
       aspect-ratio: 1 / 1;
       height: auto;
-      border-radius: 5px;
+      border-radius: 4px;
     }
 
-    /* 30日表示：6列 × 5行（枠幅いっぱいにドットを拡大） */
+    /* 30日表示：6列 × 5行 */
     .habit-list.range-30 .dot-grid {
       grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 6px;
+      gap: 5px;
     }
     .habit-list.range-30 .dot {
       width: 100%;
       aspect-ratio: 1 / 1;
       height: auto;
-      border-radius: 6px;
+      border-radius: 5px;
     }
 
     .dot {
@@ -360,17 +380,19 @@
         const header = document.createElement('div');
         header.className = 'habit-header';
         header.innerHTML = `
-          <div class="habit-meta">
-            <span class="habit-title">${escapeHtml(habit.title)}</span>
-            <span class="habit-count">${totalCount}日達成</span>
+          <div class="habit-top-row">
+            <div class="habit-meta">
+              <span class="habit-title">${escapeHtml(habit.title)}</span>
+              <span class="habit-count">${totalCount}日達成</span>
+            </div>
+            <div class="habit-controls">
+              <button class="btn-icon btn-edit" title="名前・色を変更">✎</button>
+              <button class="btn-icon btn-del" title="削除">🗑</button>
+            </div>
           </div>
-          <div class="habit-controls">
-            <button class="btn-check" style="background:${isTodayDone ? habitColor : '#27272a'}; border-color:${habitColor};">
-              ${isTodayDone ? '✓ 完了' : '今日を記録'}
-            </button>
-            <button class="btn-icon btn-edit" title="名前・色を変更">✎</button>
-            <button class="btn-icon btn-del" title="削除">🗑</button>
-          </div>
+          <button class="btn-check" style="background:${isTodayDone ? habitColor : '#27272a'}; border-color:${habitColor};">
+            ${isTodayDone ? '✓ 完了' : '今日を記録'}
+          </button>
         `;
 
         header.querySelector('.btn-check').onclick = async () => {
