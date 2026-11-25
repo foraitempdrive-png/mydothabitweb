@@ -20,7 +20,7 @@
     .container { max-width: 720px; margin: 0 auto; padding: 20px 14px 80px; }
     .header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 20px; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 18px; gap: 8px; flex-wrap: wrap;
     }
     .header h1 { font-size: 20px; font-weight: 700; }
     .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -66,28 +66,41 @@
     .habit-count { font-size: 11px; color: #a1a1aa; white-space: nowrap; }
     .habit-controls { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 
+    /* 120日表示：24列 × 5行（枠幅いっぱいにドットを拡大） */
     .dot-grid {
       display: grid;
-      grid-template-rows: repeat(7, 1fr);
-      grid-auto-flow: column;
-      gap: 4px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-      width: fit-content;
-      max-width: 100%;
+      grid-auto-flow: row;
+      width: 100%;
     }
-    .dot {
-      width: 14px; height: 14px; border-radius: 3px; cursor: pointer;
-      transition: transform 0.1s;
-    }
-    .habit-list.range-30 .dot {
-      width: 16px; height: 16px; border-radius: 4px;
-    }
-    .habit-list.range-30 .dot-grid {
+    .habit-list:not(.range-30) .dot-grid {
+      grid-template-columns: repeat(24, minmax(0, 1fr));
       gap: 5px;
     }
-    .dot:hover { transform: scale(1.2); }
-    .dot.has-memo { outline: 1.5px solid #ffffffaa; outline-offset: -1.5px; }
+    .habit-list:not(.range-30) .dot {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      border-radius: 5px;
+    }
+
+    /* 30日表示：6列 × 5行（枠幅いっぱいにドットを拡大） */
+    .habit-list.range-30 .dot-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .habit-list.range-30 .dot {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    .dot {
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .dot:hover { transform: scale(1.08); }
+    .dot.has-memo { outline: 2px solid #ffffffcc; outline-offset: -2px; }
 
     .btn-primary {
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
