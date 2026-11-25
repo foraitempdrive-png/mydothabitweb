@@ -18,8 +18,23 @@
       min-height: 100vh; text-align: center; padding: 20px; gap: 12px;
     }
     .container { max-width: 680px; margin: 0 auto; padding: 20px 16px 80px; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 24px; gap: 8px; flex-wrap: wrap;
+    }
     .header h1 { font-size: 20px; font-weight: 700; }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .range-switch {
+      display: inline-flex; background: #18181b; border: 1px solid #27272a;
+      border-radius: 8px; padding: 2px;
+    }
+    .range-btn {
+      background: transparent; border: none; color: #a1a1aa;
+      padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: background-color 0.15s, color 0.15s;
+    }
+    .range-btn.active { background: #27272a; color: #f4f4f5; }
 
     .card {
       background: #18181b; border: 1px solid #27272a; border-radius: 14px; padding: 16px;
@@ -94,7 +109,11 @@
   <div id="app-view" class="container" style="display:none;">
     <header class="header">
       <h1>My DotHabit</h1>
-      <div style="display:flex; gap:8px;">
+      <div class="header-actions">
+        <div class="range-switch" role="group" aria-label="表示期間">
+          <button type="button" class="range-btn" data-days="120">120日</button>
+          <button type="button" class="range-btn" data-days="30">30日</button>
+        </div>
         <button id="btn-toggle-add" class="btn-primary">＋ 追加</button>
         <button id="btn-logout" class="btn-icon" title="ログアウト">退出</button>
       </div>
@@ -102,37 +121,57 @@
 
     <form id="add-form" class="card add-form">
       <input type="text" id="habit-title" placeholder="習慣の名前（例：読書 15分、散歩）" required />
-      <div class="color-picker" id="color-picker"></div>
+      <div class="color-picker" id="add-color-picker"></div>
       <button type="submit" class="btn-primary" style="width:100%;">作成する</button>
     </form>
 
     <div id="habit-list" class="habit-list"></div>
   </div>
 
-  <div id="modal-backdrop" class="modal-backdrop">
+  <!-- 日付別記録＆メモモーダル -->
+  <div id="log-modal-backdrop" class="modal-backdrop">
     <div class="card modal">
       <div class="modal-header">
-        <h3 id="modal-title"></h3>
-        <button id="btn-close-modal" class="btn-icon">✕</button>
+        <h3 id="log-modal-title"></h3>
+        <button id="btn-close-log-modal" class="btn-icon">✕</button>
       </div>
       <label class="checkbox-row">
-        <input type="checkbox" id="modal-completed" />
+        <input type="checkbox" id="log-modal-completed" />
         <span>達成済みにする</span>
       </label>
       <div style="margin-top:12px;">
         <label style="font-size:12px; color:#a1a1aa;">一言メモ</label>
-        <textarea id="modal-memo" rows="3" placeholder="感想や記録メモ..."></textarea>
+        <textarea id="log-modal-memo" rows="3" placeholder="感想や記録メモ..."></textarea>
       </div>
-      <button id="btn-save-modal" class="btn-primary" style="width:100%; margin-top:12px;">保存</button>
+      <button id="btn-save-log-modal" class="btn-primary" style="width:100%; margin-top:12px;">保存</button>
+    </div>
+  </div>
+
+  <!-- 習慣編集（リネーム＆色変更）モーダル -->
+  <div id="edit-modal-backdrop" class="modal-backdrop">
+    <div class="card modal">
+      <div class="modal-header">
+        <h3>習慣の編集</h3>
+        <button id="btn-close-edit-modal" class="btn-icon">✕</button>
+      </div>
+      <div>
+        <label style="font-size:12px; color:#a1a1aa;">習慣の名前</label>
+        <input type="text" id="edit-habit-title" required />
+      </div>
+      <div style="margin-top:12px;">
+        <label style="font-size:12px; color:#a1a1aa; display:block; margin-bottom:6px;">テーマカラー</label>
+        <div class="color-picker" id="edit-color-picker"></div>
+      </div>
+      <button id="btn-save-edit-modal" class="btn-primary" style="width:100%; margin-top:14px;">変更を保存</button>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ★ ここに手順1で取得した firebaseConfig を貼り付けてください ★
+    // ★ ここに firebaseConfig を貼り付けてください ★
 const firebaseConfig = {
   apiKey: "AIzaSyB_DmTpMKMVHxNKlC5umC1hadI4EwSx1TE",
   authDomain: "my-dothabit.firebaseapp.com",
@@ -149,14 +188,22 @@ const firebaseConfig = {
     const db = getFirestore(app);
 
     const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
-    let selectedColor = COLORS[0];
+    const RANGE_STORAGE_KEY = 'dothabit_range_days';
+
+    const savedRange = Number(localStorage.getItem(RANGE_STORAGE_KEY));
+    let rangeDays = (savedRange === 30 || savedRange === 120) ? savedRange : 120;
+
+    let addSelectedColor = COLORS[0];
+    let editSelectedColor = COLORS[0];
+    let editingHabitId = null;
+
     let habits = [];
     let logs = {};
-    let modalState = null;
+    let logModalState = null;
     let unsubHabits = null;
     let unsubLogs = null;
 
-    const getPastDays = (days = 112) => {
+    const getPastDays = (days) => {
       const res = [];
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date();
@@ -166,23 +213,44 @@ const firebaseConfig = {
       return res;
     };
 
-    const days = getPastDays(112);
-    const today = days[days.length - 1];
+    function renderColorPicker(containerEl, getCurrent, setCurrent) {
+      containerEl.innerHTML = '';
+      COLORS.forEach(c => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `color-dot ${c === getCurrent() ? 'selected' : ''}`;
+        btn.style.backgroundColor = c;
+        btn.onclick = () => {
+          setCurrent(c);
+          containerEl.querySelectorAll('.color-dot').forEach(el => el.classList.remove('selected'));
+          btn.classList.add('selected');
+        };
+        containerEl.appendChild(btn);
+      });
+    }
 
-    const colorPickerEl = document.getElementById('color-picker');
-    COLORS.forEach(c => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = `color-dot ${c === selectedColor ? 'selected' : ''}`;
-      btn.style.backgroundColor = c;
+    const addColorPickerEl = document.getElementById('add-color-picker');
+    const editColorPickerEl = document.getElementById('edit-color-picker');
+    renderColorPicker(addColorPickerEl, () => addSelectedColor, (c) => { addSelectedColor = c; });
+
+    // 表示期間（120日 / 30日）切り替え
+    function syncRangeButtons() {
+      document.querySelectorAll('.range-btn').forEach(btn => {
+        const d = Number(btn.dataset.days);
+        btn.classList.toggle('active', d === rangeDays);
+      });
+    }
+    document.querySelectorAll('.range-btn').forEach(btn => {
       btn.onclick = () => {
-        selectedColor = c;
-        document.querySelectorAll('.color-dot').forEach(el => el.classList.remove('selected'));
-        btn.classList.add('selected');
+        rangeDays = Number(btn.dataset.days);
+        localStorage.setItem(RANGE_STORAGE_KEY, String(rangeDays));
+        syncRangeButtons();
+        render();
       };
-      colorPickerEl.appendChild(btn);
     });
+    syncRangeButtons();
 
+    // 認証イベント
     document.getElementById('btn-login').onclick = async () => {
       document.getElementById('auth-error').textContent = '';
       try {
@@ -222,6 +290,7 @@ const firebaseConfig = {
       });
     }
 
+    // 習慣追加
     const addForm = document.getElementById('add-form');
     document.getElementById('btn-toggle-add').onclick = () => addForm.classList.toggle('open');
     addForm.onsubmit = async (e) => {
@@ -229,16 +298,21 @@ const firebaseConfig = {
       const input = document.getElementById('habit-title');
       const title = input.value.trim();
       if (!title) return;
-      await addDoc(collection(db, 'habits'), { title, color: selectedColor, createdAt: Date.now() });
+      await addDoc(collection(db, 'habits'), { title, color: addSelectedColor, createdAt: Date.now() });
       input.value = '';
       addForm.classList.remove('open');
     };
 
+    // 描画
     function render() {
       const listEl = document.getElementById('habit-list');
       listEl.innerHTML = '';
 
+      const days = getPastDays(rangeDays);
+      const today = days[days.length - 1];
+
       habits.forEach(habit => {
+        const habitColor = habit.color || COLORS[0];
         const isTodayDone = !!logs[`${habit.id}_${today}`]?.completed;
         const totalCount = days.filter(d => logs[`${habit.id}_${d}`]?.completed).length;
 
@@ -250,12 +324,13 @@ const firebaseConfig = {
         header.innerHTML = `
           <div>
             <span class="habit-title">${escapeHtml(habit.title)}</span>
-            <span class="habit-count">${totalCount}日達成</span>
+            <span class="habit-count">${totalCount}日達成（${rangeDays}日）</span>
           </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <button class="btn-check" style="background:${isTodayDone ? habit.color : '#27272a'}; border-color:${habit.color};">
+          <div style="display:flex; align-items:center; gap:4px;">
+            <button class="btn-check" style="background:${isTodayDone ? habitColor : '#27272a'}; border-color:${habitColor}; margin-right:4px;">
               ${isTodayDone ? '✓ 完了' : '今日を記録'}
             </button>
+            <button class="btn-icon btn-edit" title="名前・色を変更">✎</button>
             <button class="btn-icon btn-del" title="削除">🗑</button>
           </div>
         `;
@@ -269,6 +344,8 @@ const firebaseConfig = {
             await setDoc(doc(db, 'logs', logId), { habitId: habit.id, date: today, completed: true, memo: cur?.memo || '' });
           }
         };
+
+        header.querySelector('.btn-edit').onclick = () => openEditModal(habit);
 
         header.querySelector('.btn-del').onclick = async () => {
           if (confirm('この習慣を削除しますか？')) {
@@ -285,9 +362,9 @@ const firebaseConfig = {
           const hasMemo = !!log?.memo;
           const dot = document.createElement('div');
           dot.className = `dot ${hasMemo ? 'has-memo' : ''}`;
-          dot.style.backgroundColor = done ? habit.color : '#27272a';
+          dot.style.backgroundColor = done ? habitColor : '#27272a';
           dot.title = `${date}${hasMemo ? ' : ' + log.memo : ''}`;
-          dot.onclick = () => openModal(habit, date);
+          dot.onclick = () => openLogModal(habit, date);
           grid.appendChild(dot);
         });
 
@@ -297,34 +374,66 @@ const firebaseConfig = {
       });
     }
 
-    const backdrop = document.getElementById('modal-backdrop');
-    const modalTitle = document.getElementById('modal-title');
-    const modalCompleted = document.getElementById('modal-completed');
-    const modalMemo = document.getElementById('modal-memo');
+    // 日付別記録＆メモモーダル操作
+    const logBackdrop = document.getElementById('log-modal-backdrop');
+    const logModalTitle = document.getElementById('log-modal-title');
+    const logModalCompleted = document.getElementById('log-modal-completed');
+    const logModalMemo = document.getElementById('log-modal-memo');
 
-    function openModal(habit, date) {
+    function openLogModal(habit, date) {
       const log = logs[`${habit.id}_${date}`] || { completed: false, memo: '' };
-      modalState = { habitId: habit.id, date };
-      modalTitle.textContent = `${habit.title} (${date})`;
-      modalCompleted.checked = !!log.completed;
-      modalMemo.value = log.memo || '';
-      backdrop.classList.add('open');
+      logModalState = { habitId: habit.id, date };
+      logModalTitle.textContent = `${habit.title} (${date})`;
+      logModalCompleted.checked = !!log.completed;
+      logModalMemo.value = log.memo || '';
+      logBackdrop.classList.add('open');
     }
 
-    document.getElementById('btn-close-modal').onclick = () => backdrop.classList.remove('open');
-    backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.classList.remove('open'); };
+    document.getElementById('btn-close-log-modal').onclick = () => logBackdrop.classList.remove('open');
+    logBackdrop.onclick = (e) => { if (e.target === logBackdrop) logBackdrop.classList.remove('open'); };
 
-    document.getElementById('btn-save-modal').onclick = async () => {
-      if (!modalState) return;
-      const logId = `${modalState.habitId}_${modalState.date}`;
-      const completed = modalCompleted.checked;
-      const memo = modalMemo.value;
+    document.getElementById('btn-save-log-modal').onclick = async () => {
+      if (!logModalState) return;
+      const logId = `${logModalState.habitId}_${logModalState.date}`;
+      const completed = logModalCompleted.checked;
+      const memo = logModalMemo.value;
       if (!completed && !memo.trim()) {
         await deleteDoc(doc(db, 'logs', logId));
       } else {
-        await setDoc(doc(db, 'logs', logId), { habitId: modalState.habitId, date: modalState.date, completed, memo });
+        await setDoc(doc(db, 'logs', logId), { habitId: logModalState.habitId, date: logModalState.date, completed, memo });
       }
-      backdrop.classList.remove('open');
+      logBackdrop.classList.remove('open');
+    };
+
+    // 習慣編集（リネーム＆色変更）モーダル操作
+    const editBackdrop = document.getElementById('edit-modal-backdrop');
+    const editTitleInput = document.getElementById('edit-habit-title');
+
+    function openEditModal(habit) {
+      editingHabitId = habit.id;
+      editTitleInput.value = habit.title;
+      editSelectedColor = habit.color || COLORS[0];
+      renderColorPicker(editColorPickerEl, () => editSelectedColor, (c) => { editSelectedColor = c; });
+      editBackdrop.classList.add('open');
+      editTitleInput.focus();
+    }
+
+    document.getElementById('btn-close-edit-modal').onclick = () => editBackdrop.classList.remove('open');
+    editBackdrop.onclick = (e) => { if (e.target === editBackdrop) editBackdrop.classList.remove('open'); };
+
+    document.getElementById('btn-save-edit-modal').onclick = async () => {
+      if (!editingHabitId) return;
+      const title = editTitleInput.value.trim();
+      if (!title) {
+        alert('習慣の名前を入力してください。');
+        return;
+      }
+      await updateDoc(doc(db, 'habits', editingHabitId), {
+        title,
+        color: editSelectedColor
+      });
+      editBackdrop.classList.remove('open');
+      editingHabitId = null;
     };
 
     function escapeHtml(str) {
