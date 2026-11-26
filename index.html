@@ -17,7 +17,7 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 100vh; text-align: center; padding: 20px; gap: 12px;
     }
-    .container { max-width: 720px; margin: 0 auto; padding: 18px 12px 80px; }
+    .container { max-width: 720px; margin: 0 auto; padding: 18px 12px 96px; }
     .header {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 18px; gap: 8px; flex-wrap: wrap;
@@ -127,6 +127,12 @@
       background: #f4f4f5; color: #09090b; border: none; border-radius: 8px;
       padding: 8px 14px; font-weight: 600; font-size: 14px; cursor: pointer;
     }
+    .btn-secondary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+      background: #27272a; color: #f4f4f5; border: 1px solid #3f3f46; border-radius: 8px;
+      padding: 6px 10px; font-weight: 600; font-size: 12px; cursor: pointer;
+    }
+    .btn-secondary:hover { background: #3f3f46; }
     .btn-check {
       display: inline-flex; align-items: center; gap: 4px;
       border: 1.5px solid; border-radius: 8px; padding: 5px 10px;
@@ -140,15 +146,75 @@
 
     .add-form { margin-bottom: 18px; display: none; flex-direction: column; gap: 12px; }
     .add-form.open { display: flex; }
-    input[type="text"], textarea {
+    input[type="text"], input[type="date"], textarea {
       width: 100%; background: #09090b; border: 1px solid #3f3f46; border-radius: 8px;
       padding: 10px 12px; color: #fff; font-size: 14px; margin-top: 4px;
+      font-family: inherit;
     }
+    textarea { resize: vertical; min-height: 76px; }
     .color-picker { display: flex; gap: 10px; }
     .color-dot {
       width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
     }
     .color-dot.selected { border-color: #fff; transform: scale(1.1); }
+
+    /* 日記画面スタイル */
+    .diary-stack { display: flex; flex-direction: column; gap: 14px; }
+    .diary-date-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    }
+    .diary-date-nav { display: flex; align-items: center; gap: 6px; }
+    .diary-date-input {
+      width: auto !important;
+      margin-top: 0 !important;
+      padding: 6px 10px !important;
+      font-size: 13px !important;
+      color-scheme: dark;
+    }
+    .diary-field { display: flex; flex-direction: column; gap: 4px; }
+    .diary-label { font-size: 13px; font-weight: 600; color: #e4e4e7; }
+    .diary-sub { font-size: 11px; color: #a1a1aa; }
+    .mood-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
+    }
+    .mood-badge {
+      font-size: 15px; font-weight: 700; color: #10b981;
+      background: #09090b; border: 1px solid #27272a; border-radius: 8px;
+      padding: 3px 10px;
+    }
+    input[type="range"].mood-slider {
+      width: 100%; accent-color: #10b981; cursor: pointer; height: 6px;
+    }
+    .mood-scale {
+      display: flex; justify-content: space-between; font-size: 11px; color: #71717a; margin-top: 4px;
+    }
+    .diary-footer {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .save-status { font-size: 12px; color: #10b981; min-height: 18px; }
+
+    /* 案B：下部固定ナビゲーションバー */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(24, 24, 27, 0.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid #27272a;
+      z-index: 40;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .bottom-nav-inner {
+      max-width: 720px; margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(var(--tab-count, 2), minmax(0, 1fr));
+    }
+    .nav-btn {
+      background: transparent; border: none; color: #a1a1aa;
+      padding: 10px 8px; font-size: 12px; font-weight: 600;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      cursor: pointer; transition: color 0.15s, background-color 0.15s;
+    }
+    .nav-btn.active { color: #f4f4f5; background: #27272a66; }
+    .nav-icon { font-size: 16px; line-height: 1.1; }
 
     .modal-backdrop {
       position: fixed; inset: 0; background: rgba(0,0,0,0.7);
@@ -163,31 +229,89 @@
 <body>
   <div id="login-view" class="center">
     <h1>My DotHabit</h1>
-    <p style="color:#888; margin-bottom:12px;">自分専用の習慣トラッカー</p>
+    <p style="color:#888; margin-bottom:12px;">自分専用の習慣＆日記トラッカー</p>
     <button id="btn-login" class="btn-primary">Googleアカウントでログイン</button>
     <p id="auth-error" style="color:#ef4444; font-size:13px;"></p>
   </div>
 
-  <div id="app-view" class="container" style="display:none;">
-    <header class="header">
-      <h1>My DotHabit</h1>
-      <div class="header-actions">
-        <div class="range-switch" role="group" aria-label="表示期間">
-          <button type="button" class="range-btn" data-days="120">120日</button>
-          <button type="button" class="range-btn" data-days="30">30日</button>
+  <div id="app-view" style="display:none;">
+    <div class="container">
+      <header class="header">
+        <h1 id="page-title">My DotHabit</h1>
+        <div class="header-actions">
+          <div id="habit-controls-group" class="header-actions">
+            <div class="range-switch" role="group" aria-label="表示期間">
+              <button type="button" class="range-btn" data-days="120">120日</button>
+              <button type="button" class="range-btn" data-days="30">30日</button>
+            </div>
+            <button id="btn-toggle-add" class="btn-primary">＋ 追加</button>
+          </div>
+          <button id="btn-logout" class="btn-icon" title="ログアウト">退出</button>
         </div>
-        <button id="btn-toggle-add" class="btn-primary">＋ 追加</button>
-        <button id="btn-logout" class="btn-icon" title="ログアウト">退出</button>
-      </div>
-    </header>
+      </header>
 
-    <form id="add-form" class="card add-form">
-      <input type="text" id="habit-title" placeholder="習慣の名前（例：読書 15分、散歩）" required />
-      <div class="color-picker" id="add-color-picker"></div>
-      <button type="submit" class="btn-primary" style="width:100%;">作成する</button>
-    </form>
+      <!-- 習慣ビュー -->
+      <section id="view-habits">
+        <form id="add-form" class="card add-form">
+          <input type="text" id="habit-title" placeholder="習慣の名前（例：読書 15分、散歩）" required />
+          <div class="color-picker" id="add-color-picker"></div>
+          <button type="submit" class="btn-primary" style="width:100%;">作成する</button>
+        </form>
+        <div id="habit-list" class="habit-list"></div>
+      </section>
 
-    <div id="habit-list" class="habit-list"></div>
+      <!-- 日記ビュー -->
+      <section id="view-diary" class="diary-stack" style="display:none;">
+        <div class="card diary-date-bar">
+          <div class="diary-date-nav">
+            <button type="button" id="btn-prev-day" class="btn-secondary">◀ 前日</button>
+            <input type="date" id="diary-date" class="diary-date-input" />
+            <button type="button" id="btn-next-day" class="btn-secondary">翌日 ▶</button>
+          </div>
+          <button type="button" id="btn-today-diary" class="btn-secondary">今日</button>
+        </div>
+
+        <div class="card">
+          <div class="mood-header">
+            <label for="diary-mood" class="diary-label">今日の気分（1〜10）</label>
+            <span id="diary-mood-value" class="mood-badge">5 / 10</span>
+          </div>
+          <input type="range" id="diary-mood" class="mood-slider" min="1" max="10" step="1" value="5" />
+          <div class="mood-scale">
+            <span>1（かなり不調）</span>
+            <span>5（普通）</span>
+            <span>10（最高）</span>
+          </div>
+        </div>
+
+        <form id="diary-form" class="card diary-stack">
+          <div class="diary-field">
+            <label for="diary-good" class="diary-label">今日良かったこと</label>
+            <textarea id="diary-good" rows="3" placeholder="小さな前進やうまくいったこと..."></textarea>
+          </div>
+
+          <div class="diary-field">
+            <label for="diary-grateful" class="diary-label">感謝していること</label>
+            <textarea id="diary-grateful" rows="3" placeholder="助けてもらったことやありがたかったこと..."></textarea>
+          </div>
+
+          <div class="diary-field">
+            <label for="diary-tomorrow" class="diary-label">明日やってみたいこと</label>
+            <textarea id="diary-tomorrow" rows="3" placeholder="試したい工夫や楽しみにしていること..."></textarea>
+          </div>
+
+          <div class="diary-footer">
+            <span id="diary-save-status" class="save-status"></span>
+            <button type="submit" class="btn-primary">日記を保存</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- 下部固定ナビゲーションバー（拡張用） -->
+    <nav class="bottom-nav" aria-label="画面切り替え">
+      <div id="bottom-nav-inner" class="bottom-nav-inner"></div>
+    </nav>
   </div>
 
   <!-- 日付別記録＆メモモーダル -->
@@ -248,11 +372,21 @@
     const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
+    // 将来タブを追加する場合はここに要素を追加するだけで拡張可能
+    const TABS = [
+      { id: 'habits', label: '習慣', icon: '▦', title: 'My DotHabit' },
+      { id: 'diary', label: '日記', icon: '✎', title: '毎日日記' }
+    ];
+
     const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
     const RANGE_STORAGE_KEY = 'dothabit_range_days';
+    const TAB_STORAGE_KEY = 'dothabit_active_tab';
 
     const savedRange = Number(localStorage.getItem(RANGE_STORAGE_KEY));
     let rangeDays = (savedRange === 30 || savedRange === 120) ? savedRange : 120;
+
+    const savedTab = localStorage.getItem(TAB_STORAGE_KEY);
+    let activeTab = TABS.some(t => t.id === savedTab) ? savedTab : 'habits';
 
     let addSelectedColor = COLORS[0];
     let editSelectedColor = COLORS[0];
@@ -260,19 +394,66 @@
 
     let habits = [];
     let logs = {};
+    let diaries = {}; // { "YYYY-MM-DD": { mood, good, grateful, tomorrow, updatedAt } }
     let logModalState = null;
     let unsubHabits = null;
     let unsubLogs = null;
+    let unsubDiaries = null;
+
+    const formatDateLocal = (d) => {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const shiftDateStr = (dateStr, deltaDays) => {
+      const [y, m, day] = dateStr.split('-').map(Number);
+      const d = new Date(y, m - 1, day);
+      d.setDate(d.getDate() + deltaDays);
+      return formatDateLocal(d);
+    };
 
     const getPastDays = (days) => {
       const res = [];
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        res.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+        res.push(formatDateLocal(d));
       }
       return res;
     };
+
+    let selectedDiaryDate = formatDateLocal(new Date());
+
+    // 下部ナビゲーション描画
+    const navInnerEl = document.getElementById('bottom-nav-inner');
+    navInnerEl.style.setProperty('--tab-count', String(TABS.length));
+
+    function renderBottomNav() {
+      navInnerEl.innerHTML = '';
+      TABS.forEach(tab => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `nav-btn ${tab.id === activeTab ? 'active' : ''}`;
+        btn.innerHTML = `<span class="nav-icon">${tab.icon}</span><span>${tab.label}</span>`;
+        btn.onclick = () => switchTab(tab.id);
+        navInnerEl.appendChild(btn);
+      });
+    }
+
+    function switchTab(tabId) {
+      activeTab = tabId;
+      localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+      const currentTabObj = TABS.find(t => t.id === activeTab) || TABS[0];
+
+      document.getElementById('page-title').textContent = currentTabObj.title;
+      document.getElementById('view-habits').style.display = activeTab === 'habits' ? 'block' : 'none';
+      document.getElementById('view-diary').style.display = activeTab === 'diary' ? 'flex' : 'none';
+      document.getElementById('habit-controls-group').style.display = activeTab === 'habits' ? 'flex' : 'none';
+
+      renderBottomNav();
+      if (activeTab === 'diary') {
+        loadDiaryToForm(selectedDiaryDate, false);
+      }
+    }
 
     function renderColorPicker(containerEl, getCurrent, setCurrent) {
       containerEl.innerHTML = '';
@@ -305,11 +486,14 @@
         rangeDays = Number(btn.dataset.days);
         localStorage.setItem(RANGE_STORAGE_KEY, String(rangeDays));
         syncRangeButtons();
-        render();
+        renderHabits();
       };
     });
     syncRangeButtons();
+    renderBottomNav();
+    switchTab(activeTab);
 
+    // 認証イベント
     document.getElementById('btn-login').onclick = async () => {
       document.getElementById('auth-error').textContent = '';
       try {
@@ -330,6 +514,7 @@
         document.getElementById('app-view').style.display = 'none';
         if (unsubHabits) unsubHabits();
         if (unsubLogs) unsubLogs();
+        if (unsubDiaries) unsubDiaries();
       }
     });
 
@@ -337,7 +522,7 @@
       const qHabits = query(collection(db, 'habits'), orderBy('createdAt', 'asc'));
       unsubHabits = onSnapshot(qHabits, (snap) => {
         habits = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        render();
+        renderHabits();
       }, (err) => {
         alert('データ読み込みエラー（Firestoreのルールやログインアカウントを確認してください）: ' + err.message);
       });
@@ -345,10 +530,22 @@
       unsubLogs = onSnapshot(collection(db, 'logs'), (snap) => {
         logs = {};
         snap.docs.forEach(d => { logs[d.id] = d.data(); });
-        render();
+        renderHabits();
+      });
+
+      unsubDiaries = onSnapshot(collection(db, 'diaries'), (snap) => {
+        diaries = {};
+        snap.docs.forEach(d => { diaries[d.id] = d.data(); });
+        // ユーザーが入力中でなければ現在選択中の日付を同期反映
+        const activeEl = document.activeElement;
+        const isTypingDiary = activeEl && ['diary-good', 'diary-grateful', 'diary-tomorrow', 'diary-mood'].includes(activeEl.id);
+        if (!isTypingDiary) {
+          loadDiaryToForm(selectedDiaryDate, false);
+        }
       });
     }
 
+    // 習慣追加
     const addForm = document.getElementById('add-form');
     document.getElementById('btn-toggle-add').onclick = () => addForm.classList.toggle('open');
     addForm.onsubmit = async (e) => {
@@ -361,7 +558,8 @@
       addForm.classList.remove('open');
     };
 
-    function render() {
+    // 習慣描画
+    function renderHabits() {
       const listEl = document.getElementById('habit-list');
       listEl.innerHTML = '';
       listEl.classList.toggle('range-30', rangeDays === 30);
@@ -434,6 +632,72 @@
       });
     }
 
+    // 日記機能
+    const diaryDateEl = document.getElementById('diary-date');
+    const diaryMoodEl = document.getElementById('diary-mood');
+    const diaryMoodValueEl = document.getElementById('diary-mood-value');
+    const diaryGoodEl = document.getElementById('diary-good');
+    const diaryGratefulEl = document.getElementById('diary-grateful');
+    const diaryTomorrowEl = document.getElementById('diary-tomorrow');
+    const diarySaveStatusEl = document.getElementById('diary-save-status');
+
+    function updateMoodBadge(val) {
+      diaryMoodValueEl.textContent = `${val} / 10`;
+    }
+
+    function loadDiaryToForm(dateStr, clearStatus = true) {
+      selectedDiaryDate = dateStr;
+      diaryDateEl.value = dateStr;
+      const entry = diaries[dateStr] || {};
+      const moodVal = Number(entry.mood) >= 1 && Number(entry.mood) <= 10 ? Number(entry.mood) : 5;
+      diaryMoodEl.value = String(moodVal);
+      updateMoodBadge(moodVal);
+      diaryGoodEl.value = entry.good || '';
+      diaryGratefulEl.value = entry.grateful || '';
+      diaryTomorrowEl.value = entry.tomorrow || '';
+      if (clearStatus) {
+        diarySaveStatusEl.textContent = '';
+      }
+    }
+
+    diaryMoodEl.addEventListener('input', () => {
+      updateMoodBadge(diaryMoodEl.value);
+    });
+
+    diaryDateEl.addEventListener('change', () => {
+      if (diaryDateEl.value) {
+        loadDiaryToForm(diaryDateEl.value);
+      }
+    });
+
+    document.getElementById('btn-prev-day').onclick = () => {
+      loadDiaryToForm(shiftDateStr(selectedDiaryDate, -1));
+    };
+
+    document.getElementById('btn-next-day').onclick = () => {
+      loadDiaryToForm(shiftDateStr(selectedDiaryDate, 1));
+    };
+
+    document.getElementById('btn-today-diary').onclick = () => {
+      loadDiaryToForm(formatDateLocal(new Date()));
+    };
+
+    document.getElementById('diary-form').onsubmit = async (e) => {
+      e.preventDefault();
+      if (!selectedDiaryDate) return;
+      const payload = {
+        date: selectedDiaryDate,
+        mood: Number(diaryMoodEl.value),
+        good: diaryGoodEl.value,
+        grateful: diaryGratefulEl.value,
+        tomorrow: diaryTomorrowEl.value,
+        updatedAt: Date.now()
+      };
+      await setDoc(doc(db, 'diaries', selectedDiaryDate), payload, { merge: true });
+      diarySaveStatusEl.textContent = `${selectedDiaryDate} の日記を保存しました`;
+    };
+
+    // 日付別記録＆メモモーダル操作
     const logBackdrop = document.getElementById('log-modal-backdrop');
     const logModalTitle = document.getElementById('log-modal-title');
     const logModalCompleted = document.getElementById('log-modal-completed');
@@ -464,6 +728,7 @@
       logBackdrop.classList.remove('open');
     };
 
+    // 習慣編集モーダル操作
     const editBackdrop = document.getElementById('edit-modal-backdrop');
     const editTitleInput = document.getElementById('edit-habit-title');
 
