@@ -173,7 +173,6 @@
     }
     .diary-field { display: flex; flex-direction: column; gap: 4px; }
     .diary-label { font-size: 13px; font-weight: 600; color: #e4e4e7; }
-    .diary-sub { font-size: 11px; color: #a1a1aa; }
     .mood-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
     }
@@ -193,7 +192,7 @@
     }
     .save-status { font-size: 12px; color: #10b981; min-height: 18px; }
 
-    /* 案B：下部固定ナビゲーションバー */
+    /* 下部固定ナビゲーションバー */
     .bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: rgba(24, 24, 27, 0.95);
@@ -273,14 +272,14 @@
 
         <div class="card">
           <div class="mood-header">
-            <label for="diary-mood" class="diary-label">今日の気分（1〜10）</label>
-            <span id="diary-mood-value" class="mood-badge">5 / 10</span>
+            <label for="diary-mood" class="diary-label">今日の気分（-5〜+5）</label>
+            <span id="diary-mood-value" class="mood-badge">0 / ±5</span>
           </div>
-          <input type="range" id="diary-mood" class="mood-slider" min="1" max="10" step="1" value="5" />
+          <input type="range" id="diary-mood" class="mood-slider" min="-5" max="5" step="1" value="0" />
           <div class="mood-scale">
-            <span>1（かなり不調）</span>
-            <span>5（普通）</span>
-            <span>10（最高）</span>
+            <span>-5（かなり不調）</span>
+            <span>0（普通）</span>
+            <span>+5（最高）</span>
           </div>
         </div>
 
@@ -536,7 +535,6 @@
       unsubDiaries = onSnapshot(collection(db, 'diaries'), (snap) => {
         diaries = {};
         snap.docs.forEach(d => { diaries[d.id] = d.data(); });
-        // ユーザーが入力中でなければ現在選択中の日付を同期反映
         const activeEl = document.activeElement;
         const isTypingDiary = activeEl && ['diary-good', 'diary-grateful', 'diary-tomorrow', 'diary-mood'].includes(activeEl.id);
         if (!isTypingDiary) {
@@ -641,15 +639,21 @@
     const diaryTomorrowEl = document.getElementById('diary-tomorrow');
     const diarySaveStatusEl = document.getElementById('diary-save-status');
 
+    function formatMoodLabel(val) {
+      const n = Number(val);
+      return `${n > 0 ? '+' + n : n} / ±5`;
+    }
+
     function updateMoodBadge(val) {
-      diaryMoodValueEl.textContent = `${val} / 10`;
+      diaryMoodValueEl.textContent = formatMoodLabel(val);
     }
 
     function loadDiaryToForm(dateStr, clearStatus = true) {
       selectedDiaryDate = dateStr;
       diaryDateEl.value = dateStr;
       const entry = diaries[dateStr] || {};
-      const moodVal = Number(entry.mood) >= 1 && Number(entry.mood) <= 10 ? Number(entry.mood) : 5;
+      const rawMood = Number(entry.mood);
+      const moodVal = Number.isFinite(rawMood) && rawMood >= -5 && rawMood <= 5 ? rawMood : 0;
       diaryMoodEl.value = String(moodVal);
       updateMoodBadge(moodVal);
       diaryGoodEl.value = entry.good || '';
