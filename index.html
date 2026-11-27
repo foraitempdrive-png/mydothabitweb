@@ -422,6 +422,40 @@
 
     let selectedDiaryDate = formatDateLocal(new Date());
 
+    // 日記用DOM要素（switchTab / loadDiaryToForm より前に初期化）
+    const diaryDateEl = document.getElementById('diary-date');
+    const diaryMoodEl = document.getElementById('diary-mood');
+    const diaryMoodValueEl = document.getElementById('diary-mood-value');
+    const diaryGoodEl = document.getElementById('diary-good');
+    const diaryGratefulEl = document.getElementById('diary-grateful');
+    const diaryTomorrowEl = document.getElementById('diary-tomorrow');
+    const diarySaveStatusEl = document.getElementById('diary-save-status');
+
+    function formatMoodLabel(val) {
+      const n = Number(val);
+      return `${n > 0 ? '+' + n : n} / ±5`;
+    }
+
+    function updateMoodBadge(val) {
+      diaryMoodValueEl.textContent = formatMoodLabel(val);
+    }
+
+    function loadDiaryToForm(dateStr, clearStatus = true) {
+      selectedDiaryDate = dateStr;
+      diaryDateEl.value = dateStr;
+      const entry = diaries[dateStr] || {};
+      const rawMood = Number(entry.mood);
+      const moodVal = Number.isFinite(rawMood) && rawMood >= -5 && rawMood <= 5 ? rawMood : 0;
+      diaryMoodEl.value = String(moodVal);
+      updateMoodBadge(moodVal);
+      diaryGoodEl.value = entry.good || '';
+      diaryGratefulEl.value = entry.grateful || '';
+      diaryTomorrowEl.value = entry.tomorrow || '';
+      if (clearStatus) {
+        diarySaveStatusEl.textContent = '';
+      }
+    }
+
     // 下部ナビゲーション描画
     const navInnerEl = document.getElementById('bottom-nav-inner');
     navInnerEl.style.setProperty('--tab-count', String(TABS.length));
@@ -630,40 +664,7 @@
       });
     }
 
-    // 日記機能
-    const diaryDateEl = document.getElementById('diary-date');
-    const diaryMoodEl = document.getElementById('diary-mood');
-    const diaryMoodValueEl = document.getElementById('diary-mood-value');
-    const diaryGoodEl = document.getElementById('diary-good');
-    const diaryGratefulEl = document.getElementById('diary-grateful');
-    const diaryTomorrowEl = document.getElementById('diary-tomorrow');
-    const diarySaveStatusEl = document.getElementById('diary-save-status');
-
-    function formatMoodLabel(val) {
-      const n = Number(val);
-      return `${n > 0 ? '+' + n : n} / ±5`;
-    }
-
-    function updateMoodBadge(val) {
-      diaryMoodValueEl.textContent = formatMoodLabel(val);
-    }
-
-    function loadDiaryToForm(dateStr, clearStatus = true) {
-      selectedDiaryDate = dateStr;
-      diaryDateEl.value = dateStr;
-      const entry = diaries[dateStr] || {};
-      const rawMood = Number(entry.mood);
-      const moodVal = Number.isFinite(rawMood) && rawMood >= -5 && rawMood <= 5 ? rawMood : 0;
-      diaryMoodEl.value = String(moodVal);
-      updateMoodBadge(moodVal);
-      diaryGoodEl.value = entry.good || '';
-      diaryGratefulEl.value = entry.grateful || '';
-      diaryTomorrowEl.value = entry.tomorrow || '';
-      if (clearStatus) {
-        diarySaveStatusEl.textContent = '';
-      }
-    }
-
+    // 日記イベント
     diaryMoodEl.addEventListener('input', () => {
       updateMoodBadge(diaryMoodEl.value);
     });
