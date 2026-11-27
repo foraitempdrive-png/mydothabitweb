@@ -123,6 +123,7 @@
       background: #f4f4f5; color: #09090b; border: none; border-radius: 8px;
       padding: 8px 14px; font-weight: 600; font-size: 14px; cursor: pointer;
     }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-secondary {
       display: inline-flex; align-items: center; justify-content: center; gap: 4px;
       background: #27272a; color: #f4f4f5; border: 1px solid #3f3f46; border-radius: 8px;
@@ -235,9 +236,6 @@
     .note-body-block {
       display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5;
     }
-    .note-tag-row {
-      font-size: 11px; color: #a1a1aa;
-    }
     .note-badge {
       display: inline-block; background: #27272a; color: #e4e4e7;
       border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600;
@@ -282,7 +280,7 @@
     <h1>My DotHabit</h1>
     <p style="color:#888; margin-bottom:12px;">自分専用の習慣＆日記トラッカー</p>
     <button id="btn-login" class="btn-primary">Googleアカウントでログイン</button>
-    <p id="auth-error" style="color:#ef4444; font-size:13px;"></p>
+    <p id="auth-error" style="color:#ef4444; font-size:13px; max-width:340px; line-height:1.5;"></p>
   </div>
 
   <div id="app-view" style="display:none;">
@@ -443,8 +441,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
-      signOut, onAuthStateChanged
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import {
       getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot,
@@ -472,7 +469,6 @@
       { id: 'notes', label: '記録', icon: '◉', title: '出来事＆感情ログ' }
     ];
 
-    // 人間の基本感情16種類（4系統×4種）
     const EMOTION_GROUPS = [
       { group: '喜び・安心系', items: ['喜び', '安心', '達成感', '感謝'] },
       { group: 'つながり・期待系', items: ['信頼', '期待', '好奇心', '親しみ'] },
@@ -515,10 +511,6 @@
       return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
 
-    const isMobileBrowser = () => {
-      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    };
-
     const shiftDateStr = (dateStr, deltaDays) => {
       const [y, m, day] = dateStr.split('-').map(Number);
       const d = new Date(y, m - 1, day);
@@ -538,7 +530,7 @@
 
     let selectedDiaryDate = formatDateLocal(new Date());
 
-    // DOM参照（初期化順エラー防止のため上部に集約）
+    // DOM参照
     const diaryDateEl = document.getElementById('diary-date');
     const diaryMoodEl = document.getElementById('diary-mood');
     const diaryMoodValueEl = document.getElementById('diary-mood-value');
@@ -758,31 +750,28 @@
     renderBottomNav();
     switchTab(activeTab);
 
-    // リダイレクト認証の復帰結果チェック
-    getRedirectResult(auth).catch((e) => {
-      if (e && e.message) {
-        document.getElementById('auth-error').textContent = 'ログインに失敗しました: ' + e.message;
-      }
-    });
-
-    // 認証イベント（スマホやポップアップブロック時は signInWithRedirect へ切替）
-    document.getElementById('btn-login').onclick = async () => {
+    // 認証イベント（ポップアップ形式に一本化）
+    const loginBtn = document.getElementById('btn-login');
+    loginBtn.onclick = () => {
       const errEl = document.getElementById('auth-error');
       errEl.textContent = '';
-      if (isMobileBrowser()) {
-        await signInWithRedirect(auth, provider);
-        return;
-      }
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (e) {
-        if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
-          await signInWithRedirect(auth, provider);
-        } else {
-          errEl.textContent = 'ログインに失敗しました: ' + e.message;
-        }
-      }
+      loginBtn.disabled = true;
+
+      signInWithPopup(auth, provider)
+        .catch((e) => {
+          if (e.code === 'auth/popup-blocked') {
+            errEl.textContent = 'ポップアップがブロックされました。ブラウザの設定でポップアップを許可するか、Safari/Chromeの通常タブで開いてください。';
+          } else if (e.code === 'auth/cancelled-popup-request') {
+            errEl.textContent = 'ログインウィンドウが重複しました。1回だけ押して認証完了までお待ちください。';
+          } else {
+            errEl.textContent = 'ログインに失敗しました: ' + e.message;
+          }
+        })
+        .finally(() => {
+          loginBtn.disabled = false;
+        });
     };
+
     document.getElementById('btn-logout').onclick = () => signOut(auth);
 
     onAuthStateChanged(auth, (user) => {
