@@ -44,7 +44,6 @@
       grid-template-columns: minmax(0, 1fr);
       gap: 12px;
     }
-    /* 30日表示は画面幅に関わらず2列 */
     .habit-list.range-30 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
@@ -63,7 +62,6 @@
     .habit-count { display: block; font-size: 11px; color: #a1a1aa; margin-top: 2px; }
     .habit-controls { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 
-    /* 2列表示時は狭い幅でも収まるよう微調整 */
     .habit-list.range-30 .card { padding: 10px; }
     .habit-list.range-30 .habit-header {
       flex-direction: column;
@@ -86,7 +84,6 @@
     }
     .habit-list.range-30 .btn-icon { padding: 3px; font-size: 12px; }
 
-    /* 120日表示：24列 × 5行 */
     .dot-grid {
       display: grid;
       grid-auto-flow: row;
@@ -103,7 +100,6 @@
       border-radius: 4px;
     }
 
-    /* 30日表示：6列 × 5行 */
     .habit-list.range-30 .dot-grid {
       grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 5px;
@@ -146,11 +142,12 @@
 
     .add-form { margin-bottom: 18px; display: none; flex-direction: column; gap: 12px; }
     .add-form.open { display: flex; }
-    input[type="text"], input[type="date"], textarea {
+    input[type="text"], input[type="date"], input[type="time"], textarea {
       width: 100%; background: #09090b; border: 1px solid #3f3f46; border-radius: 8px;
       padding: 10px 12px; color: #fff; font-size: 14px; margin-top: 4px;
       font-family: inherit;
     }
+    input[type="date"], input[type="time"] { color-scheme: dark; }
     textarea { resize: vertical; min-height: 76px; }
     .color-picker { display: flex; gap: 10px; }
     .color-dot {
@@ -158,7 +155,7 @@
     }
     .color-dot.selected { border-color: #fff; transform: scale(1.1); }
 
-    /* 日記画面スタイル */
+    /* 日記・記録ビュー共通 */
     .diary-stack { display: flex; flex-direction: column; gap: 14px; }
     .diary-date-bar {
       display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
@@ -192,6 +189,61 @@
     }
     .save-status { font-size: 12px; color: #10b981; min-height: 18px; }
 
+    /* 記録（4点セット＋16感情ラベル）スタイル */
+    .when-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .when-row input[type="date"],
+    .when-row input[type="time"] {
+      width: auto; margin-top: 0; padding: 6px 10px; font-size: 13px;
+    }
+    .emotion-groups {
+      display: flex; flex-direction: column; gap: 8px; margin-top: 4px;
+    }
+    .emotion-group-label {
+      font-size: 11px; color: #a1a1aa; margin-bottom: 4px; display: block;
+    }
+    .chip-wrap {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .emotion-chip {
+      background: #09090b; color: #d4d4d8; border: 1px solid #3f3f46;
+      border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.12s;
+    }
+    .emotion-chip.active {
+      background: #27272a; color: #fff; border-color: #10b981;
+      box-shadow: 0 0 0 1px #10b98166;
+    }
+    .filter-bar {
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+      scrollbar-width: thin;
+    }
+    .filter-chip {
+      flex-shrink: 0;
+      background: #18181b; color: #a1a1aa; border: 1px solid #27272a;
+      border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 600;
+      cursor: pointer;
+    }
+    .filter-chip.active {
+      background: #f4f4f5; color: #09090b; border-color: #f4f4f5;
+    }
+    .note-card-head {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      margin-bottom: 8px; font-size: 12px; color: #a1a1aa;
+    }
+    .note-body-block {
+      display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5;
+    }
+    .note-tag-row {
+      font-size: 11px; color: #a1a1aa;
+    }
+    .note-badge {
+      display: inline-block; background: #27272a; color: #e4e4e7;
+      border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+      margin-right: 4px; margin-top: 6px;
+    }
+
     /* 下部固定ナビゲーションバー */
     .bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0;
@@ -204,7 +256,7 @@
     .bottom-nav-inner {
       max-width: 720px; margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(var(--tab-count, 2), minmax(0, 1fr));
+      grid-template-columns: repeat(var(--tab-count, 3), minmax(0, 1fr));
     }
     .nav-btn {
       background: transparent; border: none; color: #a1a1aa;
@@ -305,9 +357,46 @@
           </div>
         </form>
       </section>
+
+      <!-- 記録（4点セット＋16感情ラベル）ビュー -->
+      <section id="view-notes" class="diary-stack" style="display:none;">
+        <div id="note-filter-bar" class="filter-bar"></div>
+
+        <form id="note-form" class="card diary-stack">
+          <div class="diary-field">
+            <span class="diary-label">1. いつ</span>
+            <div class="when-row">
+              <input type="date" id="note-date" />
+              <input type="time" id="note-time" />
+              <button type="button" id="btn-note-now" class="btn-secondary">今すぐ</button>
+            </div>
+          </div>
+
+          <div class="diary-field">
+            <label for="note-fact" class="diary-label">2. 何が起きた（事実）</label>
+            <textarea id="note-fact" rows="2" placeholder="客観的に起きた出来事..." required></textarea>
+          </div>
+
+          <div class="diary-field">
+            <label for="note-meaning" class="diary-label">3. どう思った・意味づけ</label>
+            <textarea id="note-meaning" rows="2" placeholder="どう感じたか、どう捉え直すか・次にどう活かすか..."></textarea>
+          </div>
+
+          <div class="diary-field">
+            <span class="diary-label">4. 感情ラベル（基本16種・複数選択可）</span>
+            <div id="note-emotion-groups" class="emotion-groups"></div>
+          </div>
+
+          <div class="diary-footer">
+            <span id="note-save-status" class="save-status"></span>
+            <button type="submit" class="btn-primary">記録を保存</button>
+          </div>
+        </form>
+
+        <div id="note-list" class="diary-stack"></div>
+      </section>
     </div>
 
-    <!-- 下部固定ナビゲーションバー（拡張用） -->
     <nav class="bottom-nav" aria-label="画面切り替え">
       <div id="bottom-nav-inner" class="bottom-nav-inner"></div>
     </nav>
@@ -332,7 +421,7 @@
     </div>
   </div>
 
-  <!-- 習慣編集（リネーム＆色変更）モーダル -->
+  <!-- 習慣編集モーダル -->
   <div id="edit-modal-backdrop" class="modal-backdrop">
     <div class="card modal">
       <div class="modal-header">
@@ -353,8 +442,14 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+      signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot,
+      setDoc, updateDoc, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB_DmTpMKMVHxNKlC5umC1hadI4EwSx1TE",
@@ -371,11 +466,20 @@
     const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
-    // 将来タブを追加する場合はここに要素を追加するだけで拡張可能
     const TABS = [
       { id: 'habits', label: '習慣', icon: '▦', title: 'My DotHabit' },
-      { id: 'diary', label: '日記', icon: '✎', title: '毎日日記' }
+      { id: 'diary', label: '日記', icon: '✎', title: '毎日日記' },
+      { id: 'notes', label: '記録', icon: '◉', title: '出来事＆感情ログ' }
     ];
+
+    // 人間の基本感情16種類（4系統×4種）
+    const EMOTION_GROUPS = [
+      { group: '喜び・安心系', items: ['喜び', '安心', '達成感', '感謝'] },
+      { group: 'つながり・期待系', items: ['信頼', '期待', '好奇心', '親しみ'] },
+      { group: '緊張・不安・恐れ系', items: ['不安', '焦り', '恐れ', '戸惑い'] },
+      { group: '疲労・落ち込み・怒り系', items: ['悲しみ', '疲労', '嫌悪', '怒り'] }
+    ];
+    const ALL_EMOTIONS = EMOTION_GROUPS.flatMap(g => g.items);
 
     const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
     const RANGE_STORAGE_KEY = 'dothabit_range_days';
@@ -393,14 +497,26 @@
 
     let habits = [];
     let logs = {};
-    let diaries = {}; // { "YYYY-MM-DD": { mood, good, grateful, tomorrow, updatedAt } }
+    let diaries = {};
+    let notes = [];
+    let selectedEmotions = new Set();
+    let filterEmotion = 'ALL';
     let logModalState = null;
     let unsubHabits = null;
     let unsubLogs = null;
     let unsubDiaries = null;
+    let unsubNotes = null;
 
     const formatDateLocal = (d) => {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const formatTimeLocal = (d) => {
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    };
+
+    const isMobileBrowser = () => {
+      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     };
 
     const shiftDateStr = (dateStr, deltaDays) => {
@@ -422,7 +538,7 @@
 
     let selectedDiaryDate = formatDateLocal(new Date());
 
-    // 日記用DOM要素（switchTab / loadDiaryToForm より前に初期化）
+    // DOM参照（初期化順エラー防止のため上部に集約）
     const diaryDateEl = document.getElementById('diary-date');
     const diaryMoodEl = document.getElementById('diary-mood');
     const diaryMoodValueEl = document.getElementById('diary-mood-value');
@@ -430,6 +546,25 @@
     const diaryGratefulEl = document.getElementById('diary-grateful');
     const diaryTomorrowEl = document.getElementById('diary-tomorrow');
     const diarySaveStatusEl = document.getElementById('diary-save-status');
+
+    const noteDateEl = document.getElementById('note-date');
+    const noteTimeEl = document.getElementById('note-time');
+    const noteFactEl = document.getElementById('note-fact');
+    const noteMeaningEl = document.getElementById('note-meaning');
+    const noteEmotionGroupsEl = document.getElementById('note-emotion-groups');
+    const noteFilterBarEl = document.getElementById('note-filter-bar');
+    const noteListEl = document.getElementById('note-list');
+    const noteSaveStatusEl = document.getElementById('note-save-status');
+
+    const navInnerEl = document.getElementById('bottom-nav-inner');
+    navInnerEl.style.setProperty('--tab-count', String(TABS.length));
+
+    function setNoteNow() {
+      const now = new Date();
+      noteDateEl.value = formatDateLocal(now);
+      noteTimeEl.value = formatTimeLocal(now);
+    }
+    setNoteNow();
 
     function formatMoodLabel(val) {
       const n = Number(val);
@@ -456,10 +591,6 @@
       }
     }
 
-    // 下部ナビゲーション描画
-    const navInnerEl = document.getElementById('bottom-nav-inner');
-    navInnerEl.style.setProperty('--tab-count', String(TABS.length));
-
     function renderBottomNav() {
       navInnerEl.innerHTML = '';
       TABS.forEach(tab => {
@@ -480,12 +611,113 @@
       document.getElementById('page-title').textContent = currentTabObj.title;
       document.getElementById('view-habits').style.display = activeTab === 'habits' ? 'block' : 'none';
       document.getElementById('view-diary').style.display = activeTab === 'diary' ? 'flex' : 'none';
+      document.getElementById('view-notes').style.display = activeTab === 'notes' ? 'flex' : 'none';
       document.getElementById('habit-controls-group').style.display = activeTab === 'habits' ? 'flex' : 'none';
 
       renderBottomNav();
       if (activeTab === 'diary') {
         loadDiaryToForm(selectedDiaryDate, false);
+      } else if (activeTab === 'notes') {
+        renderEmotionSelector();
+        renderNoteFilterBar();
+        renderNotes();
       }
+    }
+
+    function renderEmotionSelector() {
+      noteEmotionGroupsEl.innerHTML = '';
+      EMOTION_GROUPS.forEach(grp => {
+        const box = document.createElement('div');
+        const lbl = document.createElement('span');
+        lbl.className = 'emotion-group-label';
+        lbl.textContent = grp.group;
+        box.appendChild(lbl);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'chip-wrap';
+        grp.items.forEach(emo => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `emotion-chip ${selectedEmotions.has(emo) ? 'active' : ''}`;
+          btn.textContent = emo;
+          btn.onclick = () => {
+            if (selectedEmotions.has(emo)) {
+              selectedEmotions.delete(emo);
+            } else {
+              selectedEmotions.add(emo);
+            }
+            btn.classList.toggle('active', selectedEmotions.has(emo));
+          };
+          wrap.appendChild(btn);
+        });
+        box.appendChild(wrap);
+        noteEmotionGroupsEl.appendChild(box);
+      });
+    }
+
+    function renderNoteFilterBar() {
+      noteFilterBarEl.innerHTML = '';
+      const allBtn = document.createElement('button');
+      allBtn.type = 'button';
+      allBtn.className = `filter-chip ${filterEmotion === 'ALL' ? 'active' : ''}`;
+      allBtn.textContent = `すべて (${notes.length})`;
+      allBtn.onclick = () => {
+        filterEmotion = 'ALL';
+        renderNoteFilterBar();
+        renderNotes();
+      };
+      noteFilterBarEl.appendChild(allBtn);
+
+      ALL_EMOTIONS.forEach(emo => {
+        const count = notes.filter(n => Array.isArray(n.emotions) && n.emotions.includes(emo)).length;
+        if (count === 0 && filterEmotion !== emo) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `filter-chip ${filterEmotion === emo ? 'active' : ''}`;
+        btn.textContent = `${emo} (${count})`;
+        btn.onclick = () => {
+          filterEmotion = filterEmotion === emo ? 'ALL' : emo;
+          renderNoteFilterBar();
+          renderNotes();
+        };
+        noteFilterBarEl.appendChild(btn);
+      });
+    }
+
+    function renderNotes() {
+      noteListEl.innerHTML = '';
+      const filtered = filterEmotion === 'ALL'
+        ? notes
+        : notes.filter(n => Array.isArray(n.emotions) && n.emotions.includes(filterEmotion));
+
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const emosHtml = Array.isArray(item.emotions) && item.emotions.length
+          ? item.emotions.map(e => `<span class="note-badge">${escapeHtml(e)}</span>`).join('')
+          : '';
+
+        card.innerHTML = `
+          <div class="note-card-head">
+            <span>${escapeHtml(item.date || '')} ${escapeHtml(item.time || '')}</span>
+            <button type="button" class="btn-icon btn-del-note" title="削除">🗑</button>
+          </div>
+          <div class="note-body-block">
+            <div><strong style="color:#a1a1aa; font-size:12px;">事実：</strong>${escapeHtml(item.fact || '')}</div>
+            ${item.meaning ? `<div><strong style="color:#a1a1aa; font-size:12px;">意味づけ：</strong>${escapeHtml(item.meaning)}</div>` : ''}
+          </div>
+          <div>${emosHtml}</div>
+        `;
+
+        card.querySelector('.btn-del-note').onclick = async () => {
+          if (confirm('この記録を削除しますか？')) {
+            await deleteDoc(doc(db, 'notes', item.id));
+          }
+        };
+
+        noteListEl.appendChild(card);
+      });
     }
 
     function renderColorPicker(containerEl, getCurrent, setCurrent) {
@@ -526,13 +758,29 @@
     renderBottomNav();
     switchTab(activeTab);
 
-    // 認証イベント
+    // リダイレクト認証の復帰結果チェック
+    getRedirectResult(auth).catch((e) => {
+      if (e && e.message) {
+        document.getElementById('auth-error').textContent = 'ログインに失敗しました: ' + e.message;
+      }
+    });
+
+    // 認証イベント（スマホやポップアップブロック時は signInWithRedirect へ切替）
     document.getElementById('btn-login').onclick = async () => {
-      document.getElementById('auth-error').textContent = '';
+      const errEl = document.getElementById('auth-error');
+      errEl.textContent = '';
+      if (isMobileBrowser()) {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
       try {
         await signInWithPopup(auth, provider);
       } catch (e) {
-        document.getElementById('auth-error').textContent = 'ログインに失敗しました: ' + e.message;
+        if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, provider);
+        } else {
+          errEl.textContent = 'ログインに失敗しました: ' + e.message;
+        }
       }
     };
     document.getElementById('btn-logout').onclick = () => signOut(auth);
@@ -548,6 +796,7 @@
         if (unsubHabits) unsubHabits();
         if (unsubLogs) unsubLogs();
         if (unsubDiaries) unsubDiaries();
+        if (unsubNotes) unsubNotes();
       }
     });
 
@@ -573,6 +822,15 @@
         const isTypingDiary = activeEl && ['diary-good', 'diary-grateful', 'diary-tomorrow', 'diary-mood'].includes(activeEl.id);
         if (!isTypingDiary) {
           loadDiaryToForm(selectedDiaryDate, false);
+        }
+      });
+
+      const qNotes = query(collection(db, 'notes'), orderBy('timestamp', 'desc'));
+      unsubNotes = onSnapshot(qNotes, (snap) => {
+        notes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (activeTab === 'notes') {
+          renderNoteFilterBar();
+          renderNotes();
         }
       });
     }
@@ -700,6 +958,37 @@
       };
       await setDoc(doc(db, 'diaries', selectedDiaryDate), payload, { merge: true });
       diarySaveStatusEl.textContent = `${selectedDiaryDate} の日記を保存しました`;
+    };
+
+    // 記録フォームイベント
+    document.getElementById('btn-note-now').onclick = () => setNoteNow();
+
+    document.getElementById('note-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const fact = noteFactEl.value.trim();
+      const meaning = noteMeaningEl.value.trim();
+      const dateStr = noteDateEl.value || formatDateLocal(new Date());
+      const timeStr = noteTimeEl.value || formatTimeLocal(new Date());
+      if (!fact) return;
+
+      const parsedTs = Date.parse(`${dateStr}T${timeStr || '00:00'}`);
+      const timestamp = Number.isFinite(parsedTs) ? parsedTs : Date.now();
+
+      await addDoc(collection(db, 'notes'), {
+        date: dateStr,
+        time: timeStr,
+        timestamp,
+        fact,
+        meaning,
+        emotions: Array.from(selectedEmotions),
+        createdAt: Date.now()
+      });
+
+      noteFactEl.value = '';
+      noteMeaningEl.value = '';
+      selectedEmotions.clear();
+      renderEmotionSelector();
+      noteSaveStatusEl.textContent = `${dateStr} ${timeStr} の記録を保存しました`;
     };
 
     // 日付別記録＆メモモーダル操作
